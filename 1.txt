@@ -15,13 +15,83 @@
   
   配置打包优化
   清除默认样式
+  
+  
+  
+----------------------------------------------------------------
+  配置husky:
+  每次手动去运行命令检查太麻烦了，而且也很考验小伙伴的自觉性
+  husky 是一个 Git 钩子（Git hooks）工具，它可以让你在 Git 事件发生时执行脚本，进行代码格式化、测试等操作
+  常见的钩子:
+    pre-commit：在执行 Git commit 命令之前触发，用于在提交代码前进行代码检查、格式化、测试等操作
+    commit-msg：在提交消息（commit message）被创建后，但提交操作尚未完成之前触发，用于校验提交消息的格式和内容
+    pre-push：在执行 Git push 命令之前触发，用于在推送代码前进行额外检查、测试等操作
+  
+  具体的使用步骤如下：
+  1.启用git 钩子 输入以下命令: pnpm pkg set scripts.prepare="husky install"
+  安装成功后会在 package.json 文件中 script 中生成命令
+  注意！如未自动生成需手动添加，将以下内容粘贴到 package.json 文件中
+
+  // package.json
+  {
+    "scripts": {
+      "prepare": "husky install"
+    }
+  }
+  
+  2.执行如下代码，创建.husky目录: pnpm run prepare
+  执行成功后，项目中会生成一个 .husky 目录
+  
+  3.添加命令到pre-commit 钩子
+  给 pre-commit 钩子添加 npx lint-staged 命令: npx husky add .husky/pre-commit "npx lint-staged"
+  
+  lint-staged可以让你在 Git 暂存（staged）区域中的文件上运行脚本，通常用于在提交前对代码进行格式化、静态检查等操作。
+  可以在项目中使用 lint-staged 配合 husky 钩子来执行针对暂存文件的脚本
+  安装命令: pnpm add lint-staged -D 
+  
+  4.在 package.json 文件中添加以下配置：
+    "lint-staged": {
+    "src/**/*.{js,jsx,ts,tsx}": [
+      "eslint --max-warnings 0"
+    ],
+    "src/**/*.{vue,less,postcss,css,scss}": [
+      "stylelint --max-warnings 0"
+    ]
+  }
+  src/**/*.{js,ts,vue,tsx}为校验暂存区、指定目录下的文件类型，可以根据自己需要配置
+  现在，在代码提交时就会自动执行 npx lint-staged 命令校验代码
+----------------------------------------------------------------
+规范化提交信息
+Commitizen 是一个用于规范化提交信息的工具，它能够帮助项目团队创建一致、易读的 Git 提交消息。通过使用 Commitizen，你可以确保提交信息按照预定义的规范格式化，方便后续查看和管理项目历史记录
+
+1.运行以下命令，安装 Commitizen 和 Commitizen 适配器，比如 cz-conventional-changelog：
+pnpm add commitizen cz-conventional-changelog -D 
+
+2.安装完成后，在 package.json 中添加一个 config.commitizen 的字段，并设置它的值为 cz-conventional-changelog:
+
+"config": {
+  "commitizen": {
+    "path": "cz-conventional-changelog"
+  }
+}
+
+3. 在 package.json 中的 scripts 字段中添加一个 commit 的命令。 示例如下：
+"scripts": {
+  "commit": "git-cz"
+}
+
+
+
+
+
+----------------------------------------------------------------
   封装axios
   配置路由管理
   配置layout
   配置mobx
   
   配置.npmrc
-  配置per
+  配置perfrmmer
   
   对于没有声明文件@type/xxxx的库, 我们可以在vite-env.d.ts进行声明
   
