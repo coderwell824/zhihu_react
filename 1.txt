@@ -79,7 +79,19 @@ pnpm add commitizen cz-conventional-changelog -D
 "scripts": {
   "commit": "git-cz"
 }
+----------------------------------------------------------------
+规范化提交信息
+Commitizen是用来创建规范化提交的，如果项目成员没有使用 npm run commit 来提交，
+而是直接使用 git commit 的话还是有可能生成不规范提交的，所以还需要对最终的提交格式做一下校验，接下来添加提交格式校验
+安装：
+pnpm add commitlint -D
 
+pnpm add @commitlint/config-conventional -D
+
+// 添加 commit-msg 钩子
+npx husky add .husky/commit-msg "npx commitlint --config .commitlintrc.cjs -E HUSKY_GIT_PARAMS"
+
+创建配置文件 .commitlintrc.cjs
 
 
 
@@ -89,9 +101,150 @@ pnpm add commitizen cz-conventional-changelog -D
   配置路由管理
   配置layout
   配置mobx
-  
+  ----------------------------------------------------------------
   配置.npmrc
-  配置perfrmmer
+  新建.npmrc文件, 以key,value的形式配置文件
+  --------------------------------
+  配置node版本限制提示
+  package.json中配置
+  "engines": {
+  "node": ">=16.0.0"
+},
+----------------------------------------------------------------
+  自定义 husky 校验-校验分支名
+  在校验代码格式之前，我们还想先看一下分支名是否符合要求，而不是让大家可以随心所欲，团队合作的项目尤其推荐哦。假设我们要求的分支名格式为 feat_name_summary
+  1.在.husky 目录下新建目录custom，加入文件 branch-check.sh，文件内容为：
+  
+  // .husky/custom/branch-check.sh
+
+  #!/bin/bash
+
+  # 获取当前所在的 Git 分支名
+  branch_name=$(git symbolic-ref --short HEAD)
+
+  # 分支名规则
+  pattern="^(fix|feat)_[a-z]{2,}_([a-zA-Z0-9]+)$"
+
+  # 正则不匹配就错误提示
+  if [[ ! $branch_name =~ $pattern ]]; then
+    echo "Error: Invalid branch name. Branch name must match '(fix|feat)_(名字缩写如lyl等)_(具体改动如addcoupon)' format."
+    exit 1
+  fi
+
+  2.分支名规则根据实际情况自行修改。然后在pre-commit中加入这个脚本，在校验代码之前:
+  
+    #!/usr/bin/env sh
+  . "$(dirname -- "$0")/_/husky.sh"
+
+  # 校验分支
+  . "$(dirname -- "$0")/custom/branch-check.sh"
+
+  # 校验代码
+  npx lint-staged
+  完成后，以后再提交时就会校验一下分支是否符合规范
+  
+----------------------------------------------------------------
+  2.自定义 husky 校验-校验文件注释
+  为了项目更好的可读性和可维护性，在文件开头写一下注释，告诉别人这个文件是干嘛的是很有必要的，减少小伙伴的阅读和维护成本. 看下效果：
+  
+  /**
+  * @description 封装表单相关行为
+  */
+
+  // balabala
+
+ 1.在 .husky 下新建文件 custom/desc-check.sh ，注意，我们只校验src目录下的文件
+
+  #!/bin/bash
+
+  # 获取 git 暂存区中 src 目录下所有 js、ts 和 tsx 文件（不包括 .d.ts 文件）
+  files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^src/.*\.(js|ts|tsx)$' | grep -vE '\.d\.ts$')
+
+  # 遍历文件列表
+  for file in $files; do
+    # 检查文件的前 10 行中是否包含针对整个文件的 @description 注释
+    if ! head -n 10 "$file" | awk '/\/\*\*/,/\*\//{if(/@description/){found=1;exit}}END{exit !found}'; then
+      # 如果不存在，则输出错误信息并退出脚本
+      echo "Error: $file 必须在文件开头包含指定的jsdoc注释属性 @description xxx"
+      exit 1
+    fi
+  done
+  
+  2.然后在pre-commit中加入这个脚本，在校验代码之前:
+  
+    #!/usr/bin/env sh
+  . "$(dirname -- "$0")/_/husky.sh"
+
+  # 校验分支
+  . "$(dirname -- "$0")/custom/branch-check.sh"
+
+  # 校验文件注释
+  . "$(dirname -- "$0")/custom/desc-check.sh"
+
+  # 校验代码
+  npx lint-staged
+------------------------------------------------------------------------------------------------
+自动生成changelog
+1.使用 Commitizen 后,可以结合标准的 changelog 生成器自动生成 changelog。常用的工作流程是:
+  1.在 commit 时使用 Commitizen 生成符合规范的 commit message。
+  2.安装标准的 changelog 生成器,比如 conventional-changelog-cli:
+  
+  pnpm install conventional-changelog-cli -D
+
+2.在 package.json 中添加生成 changelog 的 npm script:
+{
+  "scripts": {
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0" 
+  }  
+}
+这里使用 conventional-changelog 工具,格式为 angular,并读取 CHANGELOG.md 生成日志
+3.运行 npm run changelog 即可自动生成 changelog，如:
+
+
+## 1.0.0 (2023-07-03)
+
+### Features
+
+* add new feature xxx
+* implement xxx
+
+### Bug Fixes
+
+* fix xxx bug
+
+conventional-changelog 命令各个参数的含义如下:
+
+-p：angular:使用angular预设的格式来解析commit消息
+-i： CHANGELOG.md:指定读取和写入的日志文件名为 CHANGELOG.md
+-s： 生成的日志中只包含提交的subject,去除body等详细信息
+-r 0：最新版本开始生成日志,0表示当前版本
+
+所以整条命令的意思是:
+使用angular格式解析commit消息, 读取和写入 CHANGELOG.md 文件, 只包含subject信息, 从当前版本(0)开始重新生成完整日志。
+conventional-changelog 还支持其他参数:
+
+-v:生成的日志中包含commit的hash值
+--release-count num:生成的日志中包含的发布版本数量
+-c config.js:使用自定义的配置文件
+-n output.md:写入自定义文件
+
+等等。可以根据需要调整参数,生成符合项目需求的changelog
+
+3. 修改 scripts 的 commit 后可以在提交后自动执行 npm run changelog，但是一般情况下你可能更需要手动执行
+ "commit": "git-cz && npm run changelog",
+
+
+----------------------------------------------------------------
+
+
+
+
+  
+  配置editconfig
+  配置prettier
+  
+  配置eslint
+  
   
   对于没有声明文件@type/xxxx的库, 我们可以在vite-env.d.ts进行声明
   
