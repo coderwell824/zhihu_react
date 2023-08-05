@@ -1,16 +1,15 @@
-import api from '@/api';
 import { makeObservable, observable, action, runInAction } from 'mobx';
+import api from '@/api';
 class User {
-  info = {}
+  info = {};
   constructor() {
     makeObservable(this, {
       info: observable,
       changeInfo: action,
       queryUserInfoAsync: action,
       clearUserInfo: action,
-    })
+    });
   }
-
 
   changeInfo(info: any) {
     this.info = info;
@@ -20,7 +19,7 @@ class User {
     this.info = {};
   }
 
-  //查询用户信息
+  // 查询用户信息
   queryUserInfoAsync() {
     runInAction(async () => {
       try {
@@ -31,8 +30,8 @@ class User {
       } catch (e) {
         console.log(e);
       }
-    })
+    });
   }
 }
-const user = new User()
+const user = new User();
 export default user;

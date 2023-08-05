@@ -1,3 +1,3 @@
 /// <reference types="vite/client" />
 
-declare module 'keepalive-react-component'
+declare module 'keepalive-react-component';
